@@ -3,130 +3,142 @@ namespace WP_Deploy_Command;
 
 class Helpers {
 
-	static function get_rsync( $source, $dest, $port, $delete = true, $compress = true, $user_excludes = false ) {
+    static function get_rsync( $source, $dest, $port, $delete = true, $compress = true, $user_excludes = false ) {
 
-		$exclude = array(
-			'.git',
-			'cache',
-			'.DS_Store',
-			'thumbs.db',
-			'.sass-cache'
-		);
+        $exclude = array(
+            '.git',
+            '.gitignore',
+            '.gitkeep',
+            '.gitmodules',
+            'cache',
+            '.DS_Store',
+            'thumbs.db',
+            '.sass-cache',
+            'gulpfile.js',
+            'package.json',
+            'bower.json',
+            'node_modules',
+            '.htaccess-dist',
+      'gulp',
+      'scss',
+            '*.log'
+        );
 
-		$user_excludes = $user_excludes ? explode( ':', (string) $user_excludes ) : array();
 
-		$exclude = array_merge( $exclude, $user_excludes );
+        $user_excludes = $user_excludes ? explode( ':', (string) $user_excludes ) : array();
 
-		$rsync = self::unplaceholdit(
-			/** The command template. */
-			'rsync -av%%compress%% -progress -e "ssh -p %%port%%"%%delete%% %%src%% %%dest%% %%exclude%%',
-			/** The arguments. */
-			array(
-				'compress' => ( $compress ? 'z' : '' ),
-				'delete' => ( $delete ? ' --delete' : '' ),
-				'src' => $source,
-				'port' => $port,
-				'dest' => $dest,
-				'exclude' => '--exclude ' . implode(
-					' --exclude ',
-					array_map( 'escapeshellarg', $exclude )
-				)
-			)
-		);
+        $exclude = array_merge( $exclude, $user_excludes );
 
-		return $rsync;
-	}
+        $rsync = self::unplaceholdit(
+            /** The command template. */
+            'rsync -av%%compress%% -progress -e "ssh -p %%port%%"%%delete%% %%src%% %%dest%% %%exclude%%',
+            /** The arguments. */
+            array(
+                'compress' => ( $compress ? 'z' : '' ),
+                'delete' => ( $delete ? ' --delete' : '' ),
+                'src' => $source,
+                'port' => $port,
+                'dest' => $dest,
+                'exclude' => '--exclude ' . implode(
+                    ' --exclude ',
+                    array_map( 'escapeshellarg', $exclude )
+                )
+            )
+        );
 
-	static function unplaceholdit( $template, $content, $object_key = 'object' ) {
+        return $rsync;
+    }
 
-		/** Early bailout? */
-		if ( strpos( $template, '%%' ) === false )
-			return $template;
+    static function unplaceholdit( $template, $content, $object_key = 'object' ) {
 
-		/** First, get a list of all placeholders. */
-		$matches = $replaces = array();
-		preg_match_all( '/%%([^%]+)%%/u', $template, $matches, PREG_SET_ORDER );
+        /** Early bailout? */
+        if ( strpos( $template, '%%' ) === false )
+            return $template;
 
-		$searches = wp_list_pluck( $matches, 0 );
+        /** First, get a list of all placeholders. */
+        $matches = $replaces = array();
+        preg_match_all( '/%%([^%]+)%%/u', $template, $matches, PREG_SET_ORDER );
 
-		/* Cast the object */
-		$object = array_key_exists( $object_key, $content ) ? (array) $content[$object_key] : false;
+        $searches = wp_list_pluck( $matches, 0 );
 
-		foreach ( $matches as $match ) {
-			/**
-			 * 0 => %%template_tag%%
-			 * 1 => variable_name
-			 */
-			if( $object && isset( $object[$match[1]] ) )
-				array_push( $replaces, $object[$match[1]] );
-			else if( isset( $content[$match[1]] ) )
-				array_push( $replaces, $content[$match[1]] );
-			else
-				array_push( $replaces, $match[0] );
-		}
+        /* Cast the object */
+        $object = array_key_exists( $object_key, $content ) ? (array) $content[$object_key] : false;
 
-		return str_replace( $searches, $replaces, $template );
-	}
+        foreach ( $matches as $match ) {
+            /**
+             * 0 => %%template_tag%%
+             * 1 => variable_name
+             */
+            if( $object && isset( $object[$match[1]] ) )
+                array_push( $replaces, $object[$match[1]] );
+            else if( isset( $content[$match[1]] ) )
+                array_push( $replaces, $content[$match[1]] );
+            else
+                array_push( $replaces, $match[0] );
+        }
 
-	static function trim_url( $url, $path = false ) {
+        return str_replace( $searches, $replaces, $template );
+    }
 
-		/** In case scheme relative URI is passed, e.g., //www.google.com/ */
-		$url = trim( $url, '/' );
+    static function trim_url( $url, $path = false ) {
 
-		/** If scheme not included, prepend it */
-		if ( ! preg_match( '#^http(s)?://#', $url ) ) {
-			$url = 'http://' . $url;
-		}
+        /** In case scheme relative URI is passed, e.g., //www.google.com/ */
+        $url = trim( $url, '/' );
 
-		/** Remove www. */
-		$url_parts = parse_url( $url );
-		$domain = preg_replace( '/^www\./', '', $url_parts['host'] ) . ( ! empty( $url_parts['port'] ) ? ':' . $url_parts['port'] : '' );
+        /** If scheme not included, prepend it */
+        if ( ! preg_match( '#^http(s)?://#', $url ) ) {
+            $url = 'http://' . $url;
+        }
 
-		/** Add directory path if needed **/
-		if ( $path && $url_parts['path'] )
-			$domain .= $url_parts['path'];
+        /** Remove www. */
+        $url_parts = parse_url( $url );
+        $domain = preg_replace( '/^www\./', '', $url_parts['host'] ) . ( ! empty( $url_parts['port'] ) ? ':' . $url_parts['port'] : '' );
 
-		return $domain;
-	}
+        /** Add directory path if needed **/
+        if ( $path && isset($url_parts['path']) )
+            $domain .= $url_parts['path'];
 
-	/** Returns and unique hash to identify the environment. */
-	static function get_hash() {
-		$siteurl = self::trim_url( get_option( 'siteurl' ) );
-		return substr( sha1( DB_NAME . $siteurl ), 0, 8 );
-	}
+        return $domain;
+    }
 
-	/**
-	 * Create a bar that spans with width of the console
-	 *
-	 * ## OPTIONS
-	 *
-	 * [<character>]
-	 * : The character(s) to make the bar with. Default =
-	 *
-	 * [--c=<c>]
-	 * : Color for bar. Default %p
-	 *
- 	 *
-	 * ## EXAMPLES
-	 *
-	 *     wp <command> bar
-	 *
-	 *     wp <command> bar '-~' --c='%r'
-	 *
-	 *     wp <command> bar '+-' --c='%r%3'
-	 */
-	function bar( $args = array(), $assoc_args = array() ) {
-		$char = isset( $args[0] ) ? $args[0] : '=';
-		$cols = \cli\Shell::columns();
-		$line = substr( str_repeat($char, $cols), 0, $cols );
+    /** Returns and unique hash to identify the environment. */
+    static function get_hash() {
+        $siteurl = self::trim_url( get_option( 'siteurl' ) );
+        return substr( sha1( DB_NAME . $siteurl ), 0, 8 );
+    }
 
-		if ( ! isset( $assoc_args['c'] ) ) {
-			$color = '%p'; // https://github.com/jlogsdon/php-cli-tools/blob/master/lib/cli/Colors.php#L113
-		} else {
-			$color = $assoc_args['c'];
-			$color = '%'. trim( $color, '%' );
-		}
+    /**
+     * Create a bar that spans with width of the console
+     *
+     * ## OPTIONS
+     *
+     * [<character>]
+     * : The character(s) to make the bar with. Default =
+     *
+     * [--c=<c>]
+     * : Color for bar. Default %p
+     *
+     *
+     * ## EXAMPLES
+     *
+     *     wp <command> bar
+     *
+     *     wp <command> bar '-~' --c='%r'
+     *
+     *     wp <command> bar '+-' --c='%r%3'
+     */
+    function bar( $args = array(), $assoc_args = array() ) {
+        $char = isset( $args[0] ) ? $args[0] : '=';
+        $cols = \cli\Shell::columns();
+        $line = substr( str_repeat($char, $cols), 0, $cols );
 
-		WP_CLI::line( WP_CLI::colorize( $color . $line .'%n' ) );
-	}
+        if ( ! isset( $assoc_args['c'] ) ) {
+            $color = '%p'; // https://github.com/jlogsdon/php-cli-tools/blob/master/lib/cli/Colors.php#L113
+        } else {
+            $color = $assoc_args['c'];
+            $color = '%'. trim( $color, '%' );
+        }
+
+        WP_CLI::line( WP_CLI::colorize( $color . $line .'%n' ) );
+    }
 }
