@@ -14,7 +14,8 @@
     ],
         "require": {
             "php": ">=5.4",
-            "wp-cli/wp-cli": ">=0.14"
+            "wp-cli/wp-cli": ">=0.14",
+            "symfony/yaml": "~2.7"
         },
         "autoload": {
             "files": [ "deploy.php" ]
