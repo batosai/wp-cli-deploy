@@ -197,9 +197,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
                     'db_password',
                 ),
                 'uploads' => array( 'uploads_path' ),
-                'themes' => array( 'themes_path' ),
+                'themes'  => array( 'themes_path' ),
                 'plugins' => array( 'plugins_path' ),
-                'core' => array( 'wp_path' )
+                'core'    => array( 'wp_path' )
             ),
             'pull' => array(
                 'global' => array(
@@ -216,9 +216,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
                     'db_password',
                 ),
                 'uploads' => array( 'uploads_path' ),
-                'themes' => array( 'themes_path' ),
+                'themes'  => array( 'themes_path' ),
                 'plugins' => array( 'plugins_path' ),
-        'core' => array( 'wp_path' )
+                'core'    => array( 'wp_path' )
             ),
             'dump' => array(
                 'wp_path',
@@ -239,41 +239,42 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'env' => '%%env%%',
 
             /** Constants which refer to remote. */
-            'host' => '%%host%%',
-            'user' => '%%user%%',
-            'path' => '%%path%%',
-            'url' => '%%url%%',
-            'wp' => '%%wp_path%%',
-            'uploads' => '%%uploads_path%%',
-            'themes' => '%%themes_path%%',
-            'plugins' => '%%plugins_path%%',
-            'db_host' => '%%db_host%%',
-            'db_name' => '%%db_name%%',
-            'db_user' => '%%db_user%%',
+            'host'        => '%%host%%',
+            'user'        => '%%user%%',
+            'path'        => '%%path%%',
+            'url'         => '%%url%%',
+            'wp'          => '%%wp_path%%',
+            'uploads'     => '%%uploads_path%%',
+            'themes'      => '%%themes_path%%',
+            'plugins'     => '%%plugins_path%%',
+            'db_host'     => '%%db_host%%',
+            'db_name'     => '%%db_name%%',
+            'db_user'     => '%%db_user%%',
             'db_password' => '%%db_password%%',
 
             /** Optional */
-            'port' => '%%port%%',
+            'port'      => '%%port%%',
             'post_hook' => '%%post_hook%%',
             'safe_mode' => '%%safe_mode%%', /** TODO */
-            'excludes' => '%%excludes%%',
+            'excludes'  => '%%excludes%%',
+            'themename' => '%%themename%%',
 
             /** Helpers which refer to local. */
-            'command' => '%%command%%',
-            'what' => '%%what%%',
-            'abspath' => '%%abspath%%',
-            'wd' => '%%abspath%%/%%env%%_%%hash%%',
-            'timestamp' => '%%pretty_date%%',
-            'tmp_path' => '%%wd%%/tmp',
-            'bk_path' => '%%wd%%/bk',
-            'tmp' => '%%tmp_path%%/%%rand%%',
+            'command'        => '%%command%%',
+            'what'           => '%%what%%',
+            'abspath'        => '%%abspath%%',
+            'wd'             => '%%abspath%%/%%env%%_%%hash%%',
+            'timestamp'      => '%%pretty_date%%',
+            'tmp_path'       => '%%wd%%/tmp',
+            'bk_path'        => '%%wd%%/bk',
+            'tmp'            => '%%tmp_path%%/%%rand%%',
             'local_hostname' => '%%hostname%%',
-            'ssh' => '%%user%%@%%host%%',
-            'local_uploads' => '%%local_uploads%%',
-            'local_themes' => '%%local_themes%%',
-            'local_plugins' => '%%local_plugins%%',
-            'local_core' => '%%local_core%%',
-            'siteurl' => '%%siteurl%%',
+            'ssh'            => '%%user%%@%%host%%',
+            'local_uploads'  => '%%local_uploads%%',
+            'local_themes'   => '%%local_themes%%',
+            'local_plugins'  => '%%local_plugins%%',
+            'local_core'     => '%%local_core%%',
+            'siteurl'        => '%%siteurl%%',
         );
     }
 
@@ -307,6 +308,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
      *      db: pushes the database to the remote server
      *      uploads: pushes the uploads to the remote server
      *
+     * [`--themename`=<themename>]
+     * : Optional: Specify theme name for --what=themes
+     *
      * [`--v`=<verbosity>]
      * : Verbosity level. Default 1. 0 is highest and 2 is lowest.
      *
@@ -317,7 +321,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
      *
      *    wp deploy push staging --what=db,uploads
      *
-     * @synopsis <environment> --what=<what> [--v=<v>]
+     * @synopsis <environment> --what=<what> [--v=<v>] [--themename=<themename>]
      */
     public function push( $args, $assoc_args ) {
 
@@ -348,6 +352,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
      *      db: pushes the database to the remote server
      *      uploads: pushes the uploads to the remote server
      *
+     * [`--themename`=<themename>]
+     * : Optional: Specify theme name for --what=themes
+     *
      * [`--v`=<verbosity>]
      * : Verbosity level. Default 1. 0 is highest and 2 is lowest.
      *
@@ -359,7 +366,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
      *    # Pull the remote db without prior local backup
      *    wp deploy pull staging --what=db --backup=false
      *
-     * @synopsis <environment> --what=<what> [--cleanup] [--backup=<backup>] [--v=<v>]
+     * @synopsis <environment> --what=<what> [--cleanup] [--backup=<backup>] [--v=<v>] [--themename=<themename>]
      */
     public function pull( $args, $assoc_args ) {
 
@@ -484,13 +491,25 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $runner = self::$runner;
 
+        $local_themes = "$c->local_themes/";
+
         /** TODO safe mode */
         $path = isset( $c->safe_mode ) ? $c->path : $c->themes;
+
+        if(!empty($c->themename)){
+          if ( ! is_dir($local_themes . $c->themename) ) {
+              WP_Cli::error( "Using unknown '$c->themename' parameter for --themename argument." );
+          }
+          else {
+            $path .= "/$c->themename/";
+            $local_themes .= "$c->themename/";
+          }
+        }
 
         $runner->add(
             Util::get_rsync(
                 // When pushing safe, we push the dir, hence no trailing slash
-                "$c->local_themes/",
+                "$local_themes/",
                 "$c->ssh:$path",
                 $c->port,
                 true,
@@ -664,10 +683,18 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'Backed up local themes.'
         );
 
+        $local_themes = "$c->local_themes/";
+        $path = "$c->themes/";
+
+        if(!empty($c->themename)){
+          $path .= "$c->themename/";
+          $local_themes .= "$c->themename/";
+        }
+
         $runner->add(
             Util::get_rsync(
-                "$c->ssh:$c->themes/",
-                $c->local_themes,
+                "$c->ssh:$path",
+                $local_themes,
                 $c->port,
                 true,
                 true,
@@ -807,6 +834,11 @@ class WP_Deploy_Command extends WP_CLI_Command {
             }
         }
 
+        $themename = null;
+        if ( isset( $assoc_args['themename'] ) ) {
+            $themename = $assoc_args['themename'];
+        }
+
         /**
          * Eeeek! So ugly.
          * TODO. Fix this.
@@ -818,7 +850,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         /** Get the environmental and set the tool config. */
         $constants = self::validate_config( $command, $what, self::$env );
-        self::$config = self::expand( self::$config, $constants, $command, $what );
+        self::$config = self::expand( self::$config, $constants, $command, $what, $themename );
 
         /** Create paths. */
         Runner::get_result( 'mkdir -p ' . self::$config->tmp_path . ';' );
@@ -895,12 +927,13 @@ class WP_Deploy_Command extends WP_CLI_Command {
     }
 
     /** Replaces the placeholders in the paths with actual data. */
-    private static function expand( $config, $constants, $command, $what ) {
+    private static function expand( $config, $constants, $command, $what, $themename ) {
 
         $data = array(
             'env' => self::$env,
             'command' => $command,
             'what' => $what,
+            'themename' => $themename,
             'excludes' => ( isset( $constants['excludes'] ) && is_string( $constants['excludes'] ) ? $constants['excludes'] : false ),
             'port' => ( isset( $constants['port'] ) ? $constants['port'] : '22' ),
             'hash' => Util::get_hash(),
@@ -926,7 +959,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                     "cd {$plugins_dir}; pwd -P;"
                 ) );
             } ),
-      'local_core' => call_user_func( function() {
+            'local_core' => call_user_func( function() {
                 $dir = WP_CONTENT_DIR . '/../'; // TODO: get the plugin directory in a better manner
                 return untrailingslashit( Runner::get_result(
                     "cd {$dir}; pwd -P;"
