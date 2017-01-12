@@ -19,8 +19,8 @@ class Helpers {
             'bower.json',
             'node_modules',
             '.htaccess-dist',
-      'gulp',
-      'scss',
+            'gulp',
+            'scss',
             '*.log'
         );
 
