@@ -1,44 +1,35 @@
 ## Project maintainers welcomed
-*April, 2016*
+*January, 2017*
 
-It just so happened that in the last year, my development interests shifted away from WordPress. As such, I ended up not writing a single line of PHP in over twelve months. 
+## WP-Cli Deploy
 
-I believe that the tools we build are best when we use them ourselves, and the reality is I don't use `wp-cli-deploy` anymore, so I decided to hand off maintenance of this project to someone else.
-
-If you’re interested in the gig, ping [me on Twitter](http://twitter.com/ciobi) and we can take it from there.
-
-## WP-Cli Deploy 
-
-__Current Version__: 1.0.0 (stable), 1.1.0-beta (in dev)
+__Current Version__: 1.2.0
 
 Deploys the local WordPress database or uploads directory.
 
-The tool requires defining a set of constants in your wp-config.php file.
+The tool requires defining a set of values in your wp-cli.yml file.
 The constants should be prefixed with the environment handle which you will use as the first parameter for your desired subcommand. An example configuration for a "dev" environment:
 
-```php
-<?php
-define( 'DEV_URL', 'the-remote-website-url.com' );
-define( 'DEV_WP_PATH', '/path/to/the/wp/dir/on/the/server' );
-define( 'DEV_HOST', 'ssh_host' );
-define( 'DEV_USER', 'ssh_user' );
-define( 'DEV_PORT', '22' );
-define( 'DEV_PATH', '/path/to/a/writable/dir/on/the/server' );
-define( 'DEV_UPLOADS_PATH', '/path/to/the/remote/uploads/directory' );
-define( 'DEV_THEMES_PATH', '/path/to/the/remote/themes/directory' );
-define( 'DEV_PLUGINS_PATH', '/path/to/the/remote/plugins/directory' );
-define( 'DEV_DB_HOST', 'the_remote_db_host' );
-define( 'DEV_DB_NAME', 'the_remote_db_name' );
-define( 'DEV_DB_USER', 'the_remote_db_user' );
-define( 'DEV_DB_PASSWORD', 'the_remote_db_password' );
-define( 'DEV_POST_HOOK', 'echo "something to be executed when the command finishes"' );
-```
+@dev:
+  path: /path/to/the/wp/dir/on/the/server
+  url: the-remote-website-url.com
+  host: ssh_host
+  ssh_user: ssh_user
+  port: ssh_port
+  writable_path: /path/to/a/writable/dir/on/the/server
+  uploads_path: /path/to/the/remote/uploads/directory
+  themes_path: /path/to/the/remote/themes/directory
+  plugins_path: /path/to/the/remote/plugins/directory
+  db_host: the_remote_db_host
+  db_name: the_remote_db_name
+  db_user: the_remote_db_user
+  db_password: the_remote_db_password
 
 => `wp deploy push dev ...`
 
 Not all commands / subcommands require all constants to be defined. To test what
 a subcommand requires, execute it with a non-existing environment handle. e.g.
-`wp deploy dump johndoe`.
+`wp deploy dump dev`.
 
 You can define as many constant groups as deployment enviroments you wish to have.
 
@@ -54,22 +45,8 @@ __Examples__
     wp deploy pull production --what=themes && wp deploy pull production --what=plugins
 
     # Dump the local db with the siteurl replaced
-    wp deploy dump andrew
+    wp deploy dump production
 
-### Installation
-
-* Clone this repository in your WordPress directory.
-* Create a `wp-cli.yml` file in the root of you WordPress directory with:
-```yml
-require: "relative/path/to/deploy.php"
-```
-* You can now use the deploy command. Type `wp help deploy` to see if it
-works.
-
-### Configuration
-
-In order to be able to use the deploy command, you need to define certain
-constants in your `wp-config.php` file.
 
 #### Configuration Dependecies
 
@@ -79,16 +56,16 @@ Here's the dependency list:
 * __`wp deploy push`__: In order to push to your server, you need to define the
 ssh credentials, and a path to a writable directory on the server. _These
 constants are needed whatever the arguments passed to the `push` subcommand_:
-    * `%%ENV%%_USER`
+    * `%%ENV%%_SSH_USER`
     * `%%ENV%%_HOST`
-    * `%%ENV%%_PATH`
+    * `%%ENV%%_WRITABLE_PATH`
 
 * __`wp deploy push %%env%% --what=db`__: In order to deploy the database to your
 server, you need to define the url of your WordPress website, the path to
 the WordPress code on your server, and the credentials to the database on
 the server:
     * `%%ENV%%_URL`
-    * `%%ENV%%_WP_PATH`
+    * `%%ENV%%_PATH`
     * `%%ENV%%_DB_HOST`
     * `%%ENV%%_DB_NAME`
     * `%%ENV%%_DB_USER`
@@ -108,9 +85,9 @@ assed to the `pull` subcommand_:
 server, you need to define the url of your remote WordPress website, the
 path to the WordPress code on your server, and the credentials to the
 database on the server:
-    * `%%ENV%%_PATH`
+    * `%%ENV%%_WRITABLE_PATH`
     * `%%ENV%%_URL`
-    * `%%ENV%%_WP_PATH`
+    * `%%ENV%%_PATH`
     * `%%ENV%%_DB_HOST`
     * `%%ENV%%_DB_NAME`
     * `%%ENV%%_DB_USER`
@@ -124,9 +101,17 @@ order to pull the remote server uploads, we need their path on the server.
 order to pull the remote server themes, we need their path on the server.
     * `%%ENV%%_THEMES_PATH`
 
+* __`wp deploy push %%env%% --what=themes --themename=mytheme`__: As in the `push` command's case, in
+order to pull the remote server specific theme, we need their path on the server.
+    * `%%ENV%%_THEMES_PATH`
+
 * __`wp deploy push %%env%% --what=plugins`__: As in the `push` command's case, in
 order to pull the remote server plugins, we need their path on the server.
     * `%%ENV%%_PLUGINS_PATH`
+
+* __`wp deploy push %%env%% --what=core`__: As in the `push` command's case, in
+order to pull the remote server core, we need their path on the server.
+    * `%%ENV%%_PATH`
 
 * __`wp dump %%env%%`__: This subcommand only requires the path to the target
 WordPress path and its URL.
@@ -175,5 +160,6 @@ define( 'DEV_POST_HOOK', $command );
 
 __Credits__
 
-* Contributors: [terminalpixel](https://github.com/terminalpixel)
+* Contributors: [opsone](https://github.com/opsone)
+* Fork of: [terminalpixel](https://github.com/terminalpixel)
 * https://github.com/demental/wp-deploy-flow for inspiration.

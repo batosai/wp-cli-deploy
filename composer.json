@@ -1,5 +1,5 @@
 {
-    "name": "c10b10/wp-cli-deploy",
+    "name": "opsone/wp-cli-deploy",
     "description": "Deploys the local WordPress database or the uploads directory to a remote server using ssh.",
     "type": "wp-cli-package",
     "keywords": ["wp-cli", "git", "deploy", "dump", "mysql", "uploads", "wordpress"],
@@ -7,9 +7,8 @@
     "license": "MIT",
     "authors": [
     {
-        "name": "Alex Ciobica",
-        "email": "alex.ciobica@gmail.com",
-        "homepage": "http://ciobi.ca"
+        "name": "Jeremy Chaufourier",
+        "email": "jeremy.chaufourier@opsone.net",
     }
     ],
         "require": {
