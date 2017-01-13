@@ -5,31 +5,31 @@ require 'runner.php';
 use \WP_Deploy_Command\Helpers as Util;
 use \WP_Deploy_Command\Command_Runner as Runner;
 
+use \Symfony\Component\Yaml\Yaml;
+
 
 /**
- * __Current Version__: 1.1.0-beta
+ * __Current Version__: 1.2.0
  *
  * Deploys the local WordPress database or the uploads, plugins, or themes directories.
  *
- * The tool requires defining a set of constants in your wp-config.php file.
+ * The tool requires defining a set of constants in your wp-cli.yml file.
  * The constants should be prefixed with the environment handle which you will use as the first paramater for your desired subcommand. An example configuration for a "dev" environment:
  *
- * ```php
- * <?php
- * define( 'DEV_URL', 'the-remote-website-url.com' );
- * define( 'DEV_WP_PATH', '/path/to/the/wp/dir/on/the/server' );
- * define( 'DEV_HOST', 'ssh_hosr' );
- * define( 'DEV_USER', 'ssh_user' );
- * define( 'DEV_PORT', 'ssh_port' );
- * define( 'DEV_PATH', '/path/to/a/writable/dir/on/the/server' );
- * define( 'DEV_UPLOADS_PATH', '/path/to/the/remote/uploads/directory' );
- * define( 'DEV_DB_HOST', 'the_remote_db_host' );
- * define( 'DEV_DB_NAME', 'the_remote_db_name' );
- * define( 'DEV_DB_USER', 'the_remote_db_user' );
- * define( 'DEV_DB_PASSWORD', 'the_remote_db_password' );
- * define( 'DEV_POST_HOOK', 'echo "something to be executed when the command
- * finishes"' );
- * ```
+ * @dev:
+ *   path: /path/to/the/wp/dir/on/the/server
+ *   url: the-remote-website-url.com
+ *   host: ssh_host
+ *   ssh_user: ssh_user
+ *   port: ssh_port
+ *   writable_path: /path/to/a/writable/dir/on/the/server
+ *   uploads_path: /path/to/the/remote/uploads/directory
+ *   themes_path: /path/to/the/remote/themes/directory
+ *   plugins_path: /path/to/the/remote/plugins/directory
+ *   db_host: the_remote_db_host
+ *   db_name: the_remote_db_name
+ *   db_user: the_remote_db_user
+ *   db_password: the_remote_db_password
  *
  * => `wp deploy push dev ...`
  *
@@ -50,10 +50,6 @@ use \WP_Deploy_Command\Command_Runner as Runner;
  *     # Dump the local db with the siteurl replaced
  *     wp deploy dump andrew
  *
- * ### Configuration
- *
- * In order to be able to use the deploy command, you need to define certain
- * constants in your `wp-config.php` file.
  *
  * #### Configuration Dependecies
  *
@@ -63,16 +59,16 @@ use \WP_Deploy_Command\Command_Runner as Runner;
  * * __`wp deploy push`__: In order to push to your server, you need to define the
  * ssh credentials, and a path to a writable directory on the server. _These
  * constants are needed whatever the arguments passed to the `push` subcommand_:
- *     * `%%ENV%%_USER`
+ *     * `%%ENV%%_SSH_USER`
  *     * `%%ENV%%_HOST`
- *     * `%%ENV%%_PATH`
+ *     * `%%ENV%%_WRITABLE_PATH`
  *
  * * __`wp deploy push %%env%% --what=db`__: In order to deploy the database to your
  * server, you need to define the url of your WordPress website, the path to
  * the WordPress code on your server, and the credentials to the database on
  * the server:
  *     * `%%ENV%%_URL`
- *     * `%%ENV%%_WP_PATH`
+ *     * `%%ENV%%_PATH`
  *     * `%%ENV%%_DB_HOST`
  *     * `%%ENV%%_DB_NAME`
  *     * `%%ENV%%_DB_USER`
@@ -85,16 +81,16 @@ use \WP_Deploy_Command\Command_Runner as Runner;
  *  __`wp deploy pull`__: In order to pull to your server, you need to define the
  * sh credentials constants. _These constants are needed whatever the arguments
  * assed to the `pull` subcommand_:
- *     * `%%ENV%%_USER`
+ *     * `%%ENV%%_SSH_USER`
  *     * `%%ENV%%_HOST`
  *
  * * __`wp deploy pull %%env%% --what=db`__: In order to pull the database to from your
  * server, you need to define the url of your remote WordPress website, the
  * path to the WordPress code on your server, and the credentials to the
  * database on the server:
- *     * `%%ENV%%_PATH`
+ *     * `%%ENV%%_WRITABLE_PATH`
  *     * `%%ENV%%_URL`
- *     * `%%ENV%%_WP_PATH`
+ *     * `%%ENV%%_PATH`
  *     * `%%ENV%%_DB_HOST`
  *     * `%%ENV%%_DB_NAME`
  *     * `%%ENV%%_DB_USER`
@@ -153,7 +149,7 @@ use \WP_Deploy_Command\Command_Runner as Runner;
 class WP_Deploy_Command extends WP_CLI_Command {
 
     /**
-     * TODO 1.1.0:
+     * TODO 1.2.0:
      * Update paths in messages to be relative to wordpress dir.
      * Fix the missing path directory at push issue.
      * Update doc.
@@ -163,6 +159,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
     /** The config holder. */
     private static $config;
+
+    private static $configEnv;
 
     private static $env;
 
@@ -178,19 +176,25 @@ class WP_Deploy_Command extends WP_CLI_Command {
             ini_set( 'display_errors', 'STDERR' );
         }
 
+        try {
+            self::$configEnv = Yaml::parse(file_get_contents('wp-cli.yml'));
+        } catch (ParseException $e) {
+            WP_Cli::error( "Unable to parse the YAML string: " . $e->getMessage() );
+        }
+
         self::$default_verbosity = 1;
 
         /** Define the constants dependencies. */
         self::$config_dependencies = array(
             'push' => array(
                 'global' => array(
-                    'user',
+                    'ssh_user',
                     'host',
-                    'path',
+                    'writable_path',
                 ),
                 'db' => array(
                     'url',
-                    'wp_path',
+                    'path',
                     'db_host',
                     'db_name',
                     'db_user',
@@ -199,17 +203,17 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 'uploads' => array( 'uploads_path' ),
                 'themes'  => array( 'themes_path' ),
                 'plugins' => array( 'plugins_path' ),
-                'core'    => array( 'wp_path' )
+                'core'    => array( 'path' )
             ),
             'pull' => array(
                 'global' => array(
-                    'user',
+                    'ssh_user',
                     'host',
                 ),
                 'db' => array(
-                    'path',
+                    'writable_path',
                     'url',
-                    'wp_path',
+                    'path',
                     'db_host',
                     'db_name',
                     'db_user',
@@ -218,10 +222,10 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 'uploads' => array( 'uploads_path' ),
                 'themes'  => array( 'themes_path' ),
                 'plugins' => array( 'plugins_path' ),
-                'core'    => array( 'wp_path' )
+                'core'    => array( 'path' )
             ),
             'dump' => array(
-                'wp_path',
+                'path',
                 'url'
             ),
             'optional' => array(
@@ -239,18 +243,18 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'env' => '%%env%%',
 
             /** Constants which refer to remote. */
-            'host'        => '%%host%%',
-            'user'        => '%%user%%',
-            'path'        => '%%path%%',
-            'url'         => '%%url%%',
-            'wp'          => '%%wp_path%%',
-            'uploads'     => '%%uploads_path%%',
-            'themes'      => '%%themes_path%%',
-            'plugins'     => '%%plugins_path%%',
-            'db_host'     => '%%db_host%%',
-            'db_name'     => '%%db_name%%',
-            'db_user'     => '%%db_user%%',
-            'db_password' => '%%db_password%%',
+            'host'          => '%%host%%',
+            'ssh_user'      => '%%ssh_user%%',
+            'writable_path' => '%%writable_path%%',
+            'url'           => '%%url%%',
+            'path'          => '%%path%%',
+            'uploads'       => '%%uploads_path%%',
+            'themes'        => '%%themes_path%%',
+            'plugins'       => '%%plugins_path%%',
+            'db_host'       => '%%db_host%%',
+            'db_name'       => '%%db_name%%',
+            'db_user'       => '%%db_user%%',
+            'db_password'   => '%%db_password%%',
 
             /** Optional */
             'port'      => '%%port%%',
@@ -269,7 +273,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'bk_path'        => '%%wd%%/bk',
             'tmp'            => '%%tmp_path%%/%%rand%%',
             'local_hostname' => '%%hostname%%',
-            'ssh'            => '%%user%%@%%host%%',
+            'ssh'            => '%%ssh_user%%@%%host%%',
             'local_uploads'  => '%%local_uploads%%',
             'local_themes'   => '%%local_themes%%',
             'local_plugins'  => '%%local_plugins%%',
@@ -436,10 +440,10 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner->add(
             Util::get_rsync(
                 $dump_file,
-                "$c->ssh:$c->path/$server_file",
+                "$c->ssh:$c->writable_path/$server_file",
                 $c->port
             ),
-            "Uploaded the database file to '$c->path/$server_file' on the server.",
+            "Uploaded the database file to '$c->writable_path/$server_file' on the server.",
             'Failed to upload the database to the server'
         );
 
@@ -447,7 +451,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner->add( "rm -f $dump_file" );
 
         $runner->add(
-            "ssh $c->ssh -p $c->port 'cd $c->path;"
+            "ssh $c->ssh -p $c->port 'cd $c->writable_path;"
             . " mysql --user=$c->db_user --password=" . escapeshellarg( $c->db_password ) ." --host=$c->db_host"
             . " $c->db_name < $server_file'",
             'Deployed the database on server.',
@@ -465,7 +469,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner = self::$runner;
 
         /** TODO safe mode */
-        $path = isset( $c->safe_mode ) ? $c->path : $c->uploads;
+        $path = isset( $c->safe_mode ) ? $c->writable_path : $c->uploads;
 
         $runner->add(
             Util::get_rsync(
@@ -494,7 +498,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $local_themes = "$c->local_themes/";
 
         /** TODO safe mode */
-        $path = isset( $c->safe_mode ) ? $c->path : $c->themes;
+        $path = isset( $c->safe_mode ) ? $c->writable_path : $c->themes;
 
         if(!empty($c->themename)){
           if ( ! is_dir($local_themes . $c->themename) ) {
@@ -531,7 +535,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner = self::$runner;
 
         /** TODO safe mode */
-        $path = isset( $c->safe_mode ) ? $c->path : $c->plugins;
+        $path = isset( $c->safe_mode ) ? $c->writable_path : $c->plugins;
 
         $runner->add(
             Util::get_rsync(
@@ -560,7 +564,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
     $excludes = self::core_excludes();
 
     /** TODO safe mode */
-    $path = isset($c->safe_mode) ? $c->path : $c->wp;
+    $path = isset($c->safe_mode) ? $c->writable_path : $c->path;
 
     $runner->add(
       Util::get_rsync(
@@ -589,17 +593,17 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner = self::$runner;
 
         $runner->add(
-            "ssh $c->ssh -p $c->port 'mkdir -p $c->path; cd $c->path;"
+            "ssh $c->ssh -p $c->port 'mkdir -p $c->writable_path; cd $c->writable_path;"
             . " mysqldump --user=$c->db_user --password=" . escapeshellarg( $c->db_password ) . " --host=$c->db_host"
             . " --single-transaction"
             . " --add-drop-table $c->db_name > $server_file'",
-            "Dumped the remote database to '$c->path/$server_file' on the server.",
+            "Dumped the remote database to '$c->writable_path/$server_file' on the server.",
             'Failed dumping the remote database.'
         );
 
         $runner->add(
             Util::get_rsync(
-                "$c->ssh:$c->path/$server_file",
+                "$c->ssh:$c->writable_path/$server_file",
                 "$c->wd/$server_file",
                 $c->port,
                 false, false // No delete or compression
@@ -608,7 +612,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         );
 
         $runner->add(
-            "ssh $c->ssh -p $c->port 'cd $c->path; rm -f $server_file'",
+            "ssh $c->ssh -p $c->port 'cd $c->writable_path; rm -f $server_file'",
             'Deleted the server dump.'
         );
 
@@ -631,9 +635,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
         );
 
         $runner->add(
-            ( $c->abspath != $c->wp ),
-            "wp search-replace --all-tables $c->wp $c->abspath",
-            "Replaced '$c->wp' with '$c->abspath' on local database."
+            ( $c->abspath != $c->path ),
+            "wp search-replace --all-tables $c->path $c->abspath",
+            "Replaced '$c->path' with '$c->abspath' on local database."
         );
 
         $runner->run();
@@ -754,7 +758,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
     $runner->add(
       Util::get_rsync(
-        "$c->ssh:$c->wp/",
+        "$c->ssh:$c->path/",
         "$c->local_core/",
         $c->port,
         true,
@@ -781,7 +785,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         $runner = self::$runner;
 
         $runner->add(
-            ( $c->abspath != $c->wp ) || ( $c->url != $c->siteurl ),
+            ( $c->abspath != $c->path ) || ( $c->url != $c->siteurl ),
             "wp db export $c->tmp",
             "Exported a local backup of the database to '$c->tmp'."
         );
@@ -793,9 +797,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
         );
 
         $runner->add(
-            ( $c->abspath != $c->wp ),
-            "wp search-replace --all-tables $c->abspath $c->wp",
-            "Replaced '$c->abspath' with with '$c->wp' in local database."
+            ( $c->abspath != $c->path ),
+            "wp search-replace --all-tables $c->abspath $c->path",
+            "Replaced '$c->abspath' with with '$c->path' in local database."
         );
 
         $runner->add(
@@ -804,13 +808,13 @@ class WP_Deploy_Command extends WP_CLI_Command {
         );
 
         $runner->add(
-            ( $c->abspath != $c->wp ) || ( $c->url != $c->siteurl ),
+            ( $c->abspath != $c->path ) || ( $c->url != $c->siteurl ),
             "wp db import $c->tmp",
             'Imported the local backup.'
         );
 
         $runner->add(
-            ( $c->abspath != $c->wp ) || ( $c->url != $c->siteurl ),
+            ( $c->abspath != $c->path ) || ( $c->url != $c->siteurl ),
             "rm -f $c->tmp",
             'Cleaned up.'
         );
@@ -899,13 +903,12 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $errors = array();
         $constants = array();
-        foreach ( $all_const as $short_name ) {
+        foreach ( $all_const as $constant ) {
             /** The constants template */
-            $constant = $get_const( $short_name );
-            if ( in_array( $short_name, $required ) && ! defined( $constant ) ) {
-                $errors[] = "Required constant $constant is not defined.";
-            } elseif ( defined( $constant ) ) {
-                $constants[$short_name] = constant( $constant );
+            if ( in_array( $constant, $required ) && ! isset( self::$configEnv["@$env"][$constant] ) ) {
+                $errors[] = "Required $constant is not defined for env $env.";
+            } elseif ( isset( self::$configEnv["@$env"][$constant] ) ) {
+                $constants[$constant] = self::$configEnv["@$env"][$constant];
             }
         }
 
@@ -917,10 +920,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
         }
 
         /** Add the optional constants. */
-        foreach ( $deps['optional'] as $optional ) {
-            $const = $get_const( $optional );
-            if ( defined( $const ) )
-                $constants[$optional] = constant( $const );
+        foreach ( $deps['optional'] as $const ) {
+            if ( isset( self::$configEnv["@$env"][$const] ) )
+                $constants[$optional] = self::$configEnv["@$env"][$const];
         }
 
         return $constants;
