@@ -10,6 +10,7 @@ Deploys the local WordPress database or uploads directory.
 The tool requires defining a set of values in your wp-cli.yml file.
 The constants should be prefixed with the environment handle which you will use as the first parameter for your desired subcommand. An example configuration for a "dev" environment:
 
+```
 @dev:
   path: /path/to/the/wp/dir/on/the/server
   url: the-remote-website-url.com
@@ -24,6 +25,7 @@ The constants should be prefixed with the environment handle which you will use 
   db_name: the_remote_db_name
   db_user: the_remote_db_user
   db_password: the_remote_db_password
+```
 
 => `wp deploy push dev ...`
 
