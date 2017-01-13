@@ -922,7 +922,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
         /** Add the optional constants. */
         foreach ( $deps['optional'] as $const ) {
             if ( isset( self::$configEnv["@$env"][$const] ) )
-                $constants[$optional] = self::$configEnv["@$env"][$const];
+                $constants[$const] = self::$configEnv["@$env"][$const];
         }
 
         return $constants;
