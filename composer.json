@@ -3,7 +3,7 @@
     "description": "Deploys the local WordPress database or the uploads directory to a remote server using ssh.",
     "type": "wp-cli-package",
     "keywords": ["wp-cli", "git", "deploy", "dump", "mysql", "uploads", "wordpress"],
-    "homepage": "https://github.com/batosai/wp-cli-deploy",
+    "homepage": "https://github.com/opsone/wp-cli-deploy",
     "license": "MIT",
     "authors": [
     {

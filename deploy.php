@@ -291,10 +291,9 @@ class WP_Deploy_Command extends WP_CLI_Command {
      */
     public function info( $args, $assoc_args ) {
 
-        WP_CLI::line( 'WP-Cli Deploy Command: https://github.com/c10b10/wp-cli-deploy' );
+        WP_CLI::line( 'WP-Cli Deploy Command: https://github.com/opsone/wp-cli-deploy' );
         WP_CLI::line( 'Supported subcommands: push, pull, dump' );
-        WP_CLI::line( 'Version: 1.1.0-alpha' );
-        WP_CLI::line( 'Author: Alex Ciobica / @ciobi' );
+        WP_CLI::line( 'Version: 1.2.0' );
         WP_CLI::line( 'Run "wp help deploy" for the documentation' );
     }
 
