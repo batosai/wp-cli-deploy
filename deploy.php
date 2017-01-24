@@ -499,6 +499,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
         /** TODO safe mode */
         $path = isset( $c->safe_mode ) ? $c->writable_path : $c->themes;
 
+        $excludes = $c->excludes;
+
         if(!empty($c->themename)){
           if ( ! is_dir($local_themes . $c->themename) ) {
               WP_Cli::error( "Using unknown '$c->themename' parameter for --themename argument." );
@@ -507,6 +509,16 @@ class WP_Deploy_Command extends WP_CLI_Command {
             $path .= "/$c->themename/";
             $local_themes .= "$c->themename/";
           }
+
+          // for https://github.com/opsone/wordpress-theme-kit
+          $user_excludes = $c->excludes ? explode( ':', (string) $c->excludes ) : array();
+          $excludes = array(
+            'app'
+          );
+
+          $excludes = array_merge($excludes, $user_excludes);
+          $excludes = implode(':', $excludes);
+
         }
 
         $runner->add(
@@ -517,7 +529,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 $c->port,
                 true,
                 true,
-                "$c->excludes"
+                "$excludes"
             ),
             "Synced local themes to '$path' on '$c->host'.",
             'Failed to upload the database to the server'
@@ -1021,6 +1033,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
     $user_excludes = $c->excludes ? explode( ':', (string) $c->excludes ) : array();
     $excludes = array(
       '/wp-cli.phar',
+      '/composer.phar',
       '/wp-cli.yml',
       '/.htaccess',
       '/.htaccess.dist',
