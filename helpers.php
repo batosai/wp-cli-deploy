@@ -17,6 +17,7 @@ class Helpers {
             'gulpfile.js',
             'package.json',
             'bower.json',
+            'debug.log',
             'node_modules',
             '.htaccess-dist',
             'gulp',

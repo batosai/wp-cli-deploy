@@ -1036,6 +1036,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
       '/composer.phar',
       '/wp-cli.yml',
       '/.htaccess',
+      '/.htpasswd',
+      '/.htpassword',
       '/.htaccess.dist',
       '/robots.txt',
       '/robots.txt.dist',
