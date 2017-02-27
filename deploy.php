@@ -1047,7 +1047,11 @@ class WP_Deploy_Command extends WP_CLI_Command {
       '/wp-content/wp-rocket-config',
       '/wp-content/advanced-cache.php',
       '/wp-content/plugins',
-      '/wp-content/themes'
+      '/wp-content/themes',
+      '/staging_*',
+      '/prod_*',
+      '/preprod_*',
+      '/dev_*',
     );
 
     $excludes = array_merge($excludes, $user_excludes);

@@ -22,7 +22,8 @@ class Helpers {
             '.htaccess-dist',
             'gulp',
             'scss',
-            '*.log'
+            '*.log',
+            'npm-debug.log'
         );
 
 
