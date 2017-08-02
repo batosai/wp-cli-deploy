@@ -27,7 +27,7 @@ class Helpers {
         );
 
 
-        $user_excludes = $user_excludes ? explode( ':', (string) $user_excludes ) : array();
+        $user_excludes = $user_excludes ? explode( ',', (string) $user_excludes ) : array();
 
         $exclude = array_merge( $exclude, $user_excludes );
 
@@ -79,6 +79,11 @@ class Helpers {
                 array_push( $replaces, $match[0] );
         }
 
+        # Used for excludes
+        if ( is_array($replaces[0]) ) {
+            $replaces = implode(",", $replaces[0]);
+        }
+
         return str_replace( $searches, $replaces, $template );
     }
 
@@ -107,6 +112,15 @@ class Helpers {
     static function get_hash() {
         $siteurl = self::trim_url( get_option( 'siteurl' ) );
         return substr( sha1( DB_NAME . $siteurl ), 0, 8 );
+    }
+
+    static function array_map_recursive($callback, $array)
+    {
+        $func = function ($item) use (&$func, &$callback) {
+            return is_array($item) ? array_map($func, $item) : call_user_func($callback, $item);
+        };
+
+        return array_map($func, $array);
     }
 
     /**

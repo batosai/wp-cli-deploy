@@ -25,6 +25,10 @@ The constants should be prefixed with the environment handle which you will use 
   db_name: the_remote_db_name
   db_user: the_remote_db_user
   db_password: the_remote_db_password
+  excludes:
+    - ".env"
+    - "file_to_exclude.php"
+    - ...
 ```
 
 => `wp deploy push dev ...`

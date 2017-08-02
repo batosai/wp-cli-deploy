@@ -947,7 +947,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'command' => $command,
             'what' => $what,
             'themename' => $themename,
-            'excludes' => ( isset( $constants['excludes'] ) && is_string( $constants['excludes'] ) ? $constants['excludes'] : false ),
+            'excludes' => ( isset( $constants['excludes'] ) ? $constants['excludes'] : false ),
             'port' => ( isset( $constants['port'] ) ? $constants['port'] : '22' ),
             'hash' => Util::get_hash(),
             'abspath' => untrailingslashit( ABSPATH ),
@@ -982,7 +982,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 get_option( 'siteurl' ),
                 true
             ) ),
-            'object' => (object) array_map( 'untrailingslashit', $constants ),
+            'object' => (object) Util::array_map_recursive( 'untrailingslashit', $constants ),
         );
 
         foreach ( $config as &$item ) {
