@@ -27,7 +27,7 @@ class Helpers {
         );
 
 
-        $user_excludes = $user_excludes ? explode( ',', (string) $user_excludes ) : array();
+        $user_excludes = $user_excludes ? explode( ':', (string) $user_excludes ) : array();
 
         $exclude = array_merge( $exclude, $user_excludes );
 
@@ -81,7 +81,7 @@ class Helpers {
 
         # Used for excludes
         if ( is_array($replaces[0]) ) {
-            $replaces = implode(",", $replaces[0]);
+            $replaces = implode(":", $replaces[0]);
         }
 
         return str_replace( $searches, $replaces, $template );
