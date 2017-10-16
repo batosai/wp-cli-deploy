@@ -199,6 +199,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                     'db_name',
                     'db_user',
                     'db_password',
+                    'https',
                 ),
                 'uploads' => array( 'uploads_path' ),
                 'themes'  => array( 'themes_path' ),
@@ -255,6 +256,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
             'db_name'       => '%%db_name%%',
             'db_user'       => '%%db_user%%',
             'db_password'   => '%%db_password%%',
+            'https'         => '%%https%%',
 
             /** Optional */
             'port'      => '%%port%%',
@@ -787,6 +789,14 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $c = self::$config;
 
+        $url_with_https = $c->url;
+        $site_url_with_https = $c->siteurl;
+
+        if($c->https == '1') {
+            $url_with_https = 'https://' . $c->url;
+            $site_url_with_https = 'http://' . $c->siteurl;
+        }
+
         $args = wp_parse_args( $args, array(
             'name' => "{$c->env}_{$c->timestamp}",
             'wd' => $c->wd
@@ -803,8 +813,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $runner->add(
             ( $c->siteurl != $c->url ),
-            "wp search-replace --all-tables $c->siteurl $c->url",
-            "Replaced '$c->siteurl' with '$c->url' in local database."
+            "wp search-replace --all-tables $site_url_with_https $url_with_https",
+            "Replaced '$site_url_with_https' with '$url_with_https' in local database."
         );
 
         $runner->add(
