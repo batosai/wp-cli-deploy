@@ -10,7 +10,6 @@ class Helpers {
             '.gitignore',
             '.gitkeep',
             '.gitmodules',
-            'cache',
             '.DS_Store',
             'thumbs.db',
             '.sass-cache',
