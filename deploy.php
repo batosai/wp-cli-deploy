@@ -178,6 +178,10 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         try {
             self::$configEnv = Yaml::parse(file_get_contents('wp-cli.yml'));
+            if (file_exists('wp-cli.local.yml')) {
+                $localConfigEnv = Yaml::parse(file_get_contents('wp-cli.local.yml'));
+                self::$configEnv = array_merge(self::$configEnv, $localConfigEnv);
+            }
         } catch (ParseException $e) {
             WP_Cli::error( "Unable to parse the YAML string: " . $e->getMessage() );
         }
