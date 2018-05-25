@@ -234,6 +234,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 'url'
             ),
             'optional' => array(
+                'working_dir',
                 'port',
                 'post_hook',
                 'excludes'
@@ -998,6 +999,11 @@ class WP_Deploy_Command extends WP_CLI_Command {
             ) ),
             'object' => (object) Util::array_map_recursive( 'untrailingslashit', $constants ),
         );
+
+        // Change working_dir
+        if ( isset( $constants['working_dir'] ) ) {
+            $config['wd'] = str_replace('%%abspath%%', '%%working_dir%%', $config['wd']);
+        }
 
         foreach ( $config as &$item ) {
             $item = Util::unplaceholdit( $item, array_merge(
