@@ -178,6 +178,10 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         try {
             self::$configEnv = Yaml::parse(file_get_contents('wp-cli.yml'));
+            if (file_exists('wp-cli.local.yml')) {
+                $localConfigEnv = Yaml::parse(file_get_contents('wp-cli.local.yml'));
+                self::$configEnv = array_merge(self::$configEnv, $localConfigEnv);
+            }
         } catch (ParseException $e) {
             WP_Cli::error( "Unable to parse the YAML string: " . $e->getMessage() );
         }
@@ -230,6 +234,7 @@ class WP_Deploy_Command extends WP_CLI_Command {
                 'url'
             ),
             'optional' => array(
+                'working_dir',
                 'port',
                 'post_hook',
                 'excludes'
@@ -603,6 +608,14 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $server_file = "{$c->env}_{$c->timestamp}.sql";
 
+        $url_with_https = $c->url;
+        $site_url_with_https = $c->siteurl;
+
+        if($c->https == '1') {
+            $url_with_https = 'https://' . $c->url;
+            $site_url_with_https = 'http://' . $c->siteurl;
+        }
+
         $runner = self::$runner;
 
         $runner->add(
@@ -643,8 +656,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $runner->add(
             ( $c->siteurl != $c->url ),
-            "wp search-replace --all-tables $c->url $c->siteurl",
-            "Replaced '$c->url' with '$c->siteurl' on the imported database."
+            "wp search-replace --all-tables $url_with_https $site_url_with_https",
+            "Replaced '$url_with_https' with '$site_url_with_https' on the imported database."
         );
 
         $runner->add(
@@ -994,6 +1007,11 @@ class WP_Deploy_Command extends WP_CLI_Command {
             ) ),
             'object' => (object) Util::array_map_recursive( 'untrailingslashit', $constants ),
         );
+
+        // Change working_dir
+        if ( isset( $constants['working_dir'] ) ) {
+            $config['wd'] = str_replace('%%abspath%%', '%%working_dir%%', $config['wd']);
+        }
 
         foreach ( $config as &$item ) {
             $item = Util::unplaceholdit( $item, array_merge(
