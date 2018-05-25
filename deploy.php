@@ -608,6 +608,14 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $server_file = "{$c->env}_{$c->timestamp}.sql";
 
+        $url_with_https = $c->url;
+        $site_url_with_https = $c->siteurl;
+
+        if($c->https == '1') {
+            $url_with_https = 'https://' . $c->url;
+            $site_url_with_https = 'http://' . $c->siteurl;
+        }
+
         $runner = self::$runner;
 
         $runner->add(
@@ -648,8 +656,8 @@ class WP_Deploy_Command extends WP_CLI_Command {
 
         $runner->add(
             ( $c->siteurl != $c->url ),
-            "wp search-replace --all-tables $c->url $c->siteurl",
-            "Replaced '$c->url' with '$c->siteurl' on the imported database."
+            "wp search-replace --all-tables $url_with_https $site_url_with_https",
+            "Replaced '$url_with_https' with '$site_url_with_https' on the imported database."
         );
 
         $runner->add(
